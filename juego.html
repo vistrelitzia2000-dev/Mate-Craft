@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mate-Craft</title>
+    <link rel="stylesheet" href="css/estilo.css">
+</head>
+<body>
+    <div id="mira">+</div>
+    <div id="reloj"><span id="reloj-hora">06:00</span><span class="fase" id="reloj-fase">Amanecer</span></div>
+    <div id="estado-guardado">Guardado: —</div>
+    <div id="hud-nivel">Nv. <span id="hud-nivel-num">1</span> · XP <span id="hud-xp">0</span><span id="hud-vidas"></span></div>
+    <div id="barras-jugador">
+        <div id="barra-comer-container"><div id="barra-comer"></div></div>
+        <div id="barra-aire"></div>
+        <div id="filas-vida-hambre">
+            <div id="barra-vida"></div>
+            <div id="barra-hambre"></div>
+        </div>
+    </div>
+    <div id="pantalla-muerte">
+        <h1>Has muerto</h1>
+        <p id="motivo-muerte">...</p>
+        <div class="btns">
+            <button class="btn-respawn" onclick="elegirRespawn()">Reaparecer</button>
+            <button class="btn-menu" onclick="elegirMenuTrasMuerte()">Salir al menú</button>
+        </div>
+    </div>
+    <div id="barra-romper-container"><div id="barra-romper"></div></div>
+    
+    <div id="bloqueo-pantalla" style="display:none;">
+        <div class="pausa-caja">
+            <h1>MATE-CRAFT</h1>
+            <p class="pausa-msg">Pausa · Guarda antes de salir</p>
+            <button type="button" id="btn-continuar" class="btn-pausa principal">Continuar</button>
+            <button type="button" id="btn-guardar" class="btn-pausa">Guardar</button>
+            <button type="button" id="btn-estadisticas" class="btn-pausa">Estadísticas / Guía</button>
+            <button type="button" id="btn-salir-menu" class="btn-pausa">Salir al menú</button>
+        </div>
+    </div>
+    
+    <div id="pantalla-inventario">
+        <div class="inventario-panel">
+            <h2 id="titulo-panel-inventario">INVENTARIO Y CRAFTEO</h2>
+            <div class="seccion-crafteo">
+                <div id="contenedor-grilla-crafteo"></div>
+                <div class="flecha-crafteo">➔</div>
+                <div class="slot-crafteo-resultado" id="craft-resultado" onclick="reclamarCrafteo()">
+                    <span id="craft-res-cant"></span>
+                </div>
+            </div>
+            <h3>Tus Materiales</h3>
+            <div style="display:flex; align-items:flex-start; gap:16px; width:100%; justify-content:center;">
+                <div class="inventario-items-grid" id="inventario-completo-grid"></div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                    <div class="slot-basura" id="slot-basura" onclick="tirarABasura(event)"
+                         ondragover="permitirSoltar(event)"
+                         ondrop="tirarABasura(event)"
+                         title="Arrastra aquí para borrar"></div>
+                    <span style="font-size:0.7rem; color:#aaa;">Basura</span>
+                </div>
+            </div>
+            <div class="barra-inv-seccion">
+                <h3>Barra rápida (12)</h3>
+                <div id="barra-inventario-grid"></div>
+                <p style="font-size: 0.75rem; color: #aaa; margin: 0; text-align: center;">Inventario general ≠ barra · Arrastra para pasar · Doble clic saca de la barra</p>
+            </div>
+            <p style="font-size: 0.8rem; color: #ccc; margin: 0; text-align: center;">Arrastra ítems a la grilla · Basura elimina el ítem</p>
+        </div>
+    </div>
+
+    <!-- UI del Horno -->
+    <div id="pantalla-horno">
+        <div class="horno-panel">
+            <h2>HORNO</h2>
+            <div class="horno-slots">
+                <div class="horno-col">
+                    <div class="horno-label">Entrada</div>
+                    <div class="slot-horno" id="horno-input"
+                         ondragover="permitirSoltar(event)" ondrop="soltarEnHorno(event, 'input')"
+                         onclick="clicSlotHornoSimple('input')" onwheel="ruedaSlotHorno(event, 'input')"
+                         title="Arrastra / clic / rueda"></div>
+                </div>
+                <div class="horno-col">
+                    <div class="horno-label">Combustible</div>
+                    <div class="slot-horno" id="horno-fuel"
+                         ondragover="permitirSoltar(event)" ondrop="soltarEnHorno(event, 'fuel')"
+                         onclick="clicSlotHornoSimple('fuel')" onwheel="ruedaSlotHorno(event, 'fuel')"
+                         title="Arrastra / clic / rueda"></div>
+                </div>
+                <div class="horno-flecha">➔</div>
+                <div class="horno-col">
+                    <div class="horno-label">Resultado</div>
+                    <div class="slot-horno" id="horno-output"
+                         onclick="clicSlotHornoSimple('output')" onwheel="ruedaSlotHorno(event, 'output')"
+                         title="Clic: tomar resultado"></div>
+                    <div id="barra-horno-container"><div id="barra-horno"></div></div>
+                </div>
+            </div>
+            <h3>Tus Materiales</h3>
+            <div class="inventario-items-grid" id="inventario-horno-grid"></div>
+            <p style="font-size: 0.8rem; color: #ccc; margin: 0; text-align: center;">Arrastra ítems | Clic en slot para sacar | Clic en resultado para tomar</p>
+        </div>
+    </div>
+
+    <!-- UI del Cofre -->
+    <div id="pantalla-cofre">
+        <div class="cofre-panel">
+            <h2>COFRE</h2>
+            <div class="cofre-grid" id="cofre-slots"></div>
+            <h3 style="margin:4px 0 0;font-size:0.95rem;color:#ccc;">Tu inventario</h3>
+            <div class="cofre-inv-grid" id="cofre-inv-grid"></div>
+            <p style="font-size:0.75rem;color:#aaa;margin:0;text-align:center;">Clic en tu inventario para guardar · Clic en el cofre para sacar · E cierra</p>
+        </div>
+    </div>
+
+    <!-- Estadísticas / guía de progreso -->
+    <div id="pantalla-stats" style="display:none;">
+        <div class="stats-panel">
+            <h2>Progreso Mate-Craft</h2>
+            <p id="stats-nivel-linea">Nivel 1 · 0 XP</p>
+            <p id="stats-vidas-linea"></p>
+            <div id="stats-barra-xp"><div id="stats-barra-xp-fill"></div></div>
+            <h3>Guía de hitos (meta: bloque de diamante)</h3>
+            <div id="stats-hitos" class="stats-hitos"></div>
+            <button type="button" id="btn-cerrar-stats" class="btn-pausa principal">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Creeper reto -->
+    <div id="pantalla-creeper" style="display:none;">
+        <div class="matequiz-panel" style="border-color:#66bb6a;">
+            <h2 style="color:#81c784;">¡CREEPER!</h2>
+            <p class="matequiz-hito">Se va a explotar. ¿Qué haces?</p>
+            <div id="creeper-choice-box">
+                <button type="button" id="creeper-btn-quiz" class="btn-pausa principal">Responder pregunta (salvarte)</button>
+                <button type="button" id="creeper-btn-pelear" class="btn-pausa">Pelear (arriesgarme)</button>
+            </div>
+            <div id="creeper-quiz-box" style="display:none;">
+                <p class="matequiz-enunciado" id="creeper-pregunta">¿?</p>
+                <input type="text" id="creeper-respuesta" placeholder="Respuesta" autocomplete="off" />
+                <button type="button" id="creeper-btn-responder" class="btn-pausa principal">Responder</button>
+            </div>
+            <p class="matequiz-feedback" id="creeper-feedback"></p>
+        </div>
+    </div>
+
+    <!-- Mate-Quiz: pregunta al progresar -->
+    <div id="pantalla-matequiz" style="display:none;">
+        <div class="matequiz-panel">
+            <h2>MATE-CRAFT</h2>
+            <p class="matequiz-hito" id="matequiz-hito">Progreso desbloqueado</p>
+            <p class="matequiz-enunciado" id="matequiz-enunciado">¿?</p>
+            <input type="text" id="matequiz-respuesta" placeholder="Tu respuesta" autocomplete="off" />
+            <p class="matequiz-hint" id="matequiz-hint">Responde bien para quedarte con el objeto. Si fallas, pierdes los materiales.</p>
+            <div class="matequiz-btns">
+                <button type="button" id="matequiz-enviar">Responder</button>
+            </div>
+            <p class="matequiz-feedback" id="matequiz-feedback"></p>
+        </div>
+    </div>
+    <div id="inventario"></div>
+    <div id="badge-creativo" class="creativo-badge">MODO CREATIVO · Alt+C para salir</div>
+    <div id="pantalla-creativo">
+        <div class="creativo-panel">
+            <h2>MODO CREATIVO</h2>
+            <p class="sub">Alt+C cierra · Elige cantidad y clic en un ítem</p>
+            <div class="creativo-cantidad">
+                <label for="creativo-cant">Cantidad:</label>
+                <select id="creativo-cant">
+                    <option value="1">1</option>
+                    <option value="8">8</option>
+                    <option value="16">16</option>
+                    <option value="32">32</option>
+                    <option value="64" selected>64</option>
+                </select>
+            </div>
+            <div class="creativo-tabs" id="creativo-tabs">
+                <button type="button" class="activo" data-tab="bloques">Bloques</button>
+                <button type="button" data-tab="items">Ítems</button>
+                <button type="button" data-tab="animales">Animales</button>
+                <button type="button" data-tab="monstruos">Monstruos</button>
+                <button type="button" data-tab="tiempo">Tiempo</button>
+            </div>
+            <div id="creativo-grid"></div>
+            <div id="creativo-mobs"></div>
+            <div id="creativo-tiempo" class="creativo-tiempo">
+                <button type="button" data-fase="dia">Dia</button>
+                <button type="button" data-fase="tarde">Tarde</button>
+                <button type="button" data-fase="noche">Noche</button>
+            </div>
+            <div class="creativo-opciones">
+                <button type="button" id="btn-creativo-limpiar">Vaciar inventario</button>
+                <button type="button" id="btn-creativo-quiz">Mate-Quiz: ON</button>
+                <button type="button" id="btn-creativo-vidas">Modo 3 vidas: ON</button>
+            </div>
+            <button type="button" id="btn-cerrar-creativo" class="btn-pausa">Cerrar creativo</button>
+        </div>
+    </div>
+
+
+        <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <!-- Mobs -->
+    <script src="mobs/mobs.js"></script>
+    <script src="mobs/pollo.js"></script>
+    <script src="mobs/cerdo.js"></script>
+    <script src="mobs/vaca.js"></script>
+    <script src="mobs/oveja.js"></script>
+    <script src="mobshostiles/zombi.js"></script>
+    <script src="mobshostiles/arana.js"></script>
+    <script src="mobshostiles/creeper.js"></script>
+    <!-- Juego (orden importante) -->
+    <script src="js/01-base.js"></script>
+    <script src="js/02-init.js"></script>
+    <script src="js/03-sistemas.js"></script>
+    <script src="js/04-loop.js"></script>
+    <script src="js/05-matequiz.js"></script>
+</body>
+</html>

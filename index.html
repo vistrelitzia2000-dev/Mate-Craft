@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mate-Craft - Menú</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+
+        body {
+            font-family: 'VT323', 'Segoe UI', monospace;
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            overflow-x: hidden;
+            background: #0b1220;
+        }
+
+        /* Fondo animado tipo cielo / bloques */
+        .bg {
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                linear-gradient(180deg, #0a1628 0%, #1a3a5c 35%, #2d6a4f 70%, #1b4332 100%);
+        }
+        .bg::before {
+            content: '';
+            position: absolute; inset: 0;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 235, 59, 0.18), transparent 60%),
+                radial-gradient(circle at 20% 80%, rgba(76, 175, 80, 0.15), transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(33, 150, 243, 0.12), transparent 35%);
+            animation: glow 8s ease-in-out infinite alternate;
+        }
+        .bg::after {
+            content: '';
+            position: absolute; inset: 0;
+            opacity: 0.12;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        @keyframes glow {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.15); }
+        }
+
+        .menu {
+            position: relative; z-index: 1;
+            width: min(520px, 94vw);
+            background: linear-gradient(165deg, rgba(18, 22, 36, 0.94), rgba(12, 16, 28, 0.96));
+            border: 4px solid #3d4a5c;
+            border-radius: 20px;
+            padding: 32px 34px 28px;
+            box-shadow:
+                0 0 0 2px #1a1f2e,
+                0 20px 50px rgba(0,0,0,0.55),
+                0 0 60px rgba(255, 235, 59, 0.08);
+            text-align: center;
+            backdrop-filter: blur(8px);
+        }
+
+        .logo-row {
+            display: flex; align-items: center; justify-content: center; gap: 12px;
+            margin-bottom: 6px;
+        }
+        .logo-cube {
+            width: 42px; height: 42px;
+            background: linear-gradient(145deg, #7cb342, #558b2f);
+            border: 3px solid #33691e;
+            border-radius: 6px;
+            box-shadow: 3px 3px 0 #1b5e20, inset 2px 2px 0 rgba(255,255,255,0.25);
+            image-rendering: pixelated;
+            position: relative;
+        }
+        .logo-cube::after {
+            content: '∑';
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 14px; color: #ffeb3b;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(1.15rem, 4vw, 1.55rem);
+            color: #ffeb3b;
+            text-shadow: 3px 3px 0 #000, 0 0 20px rgba(255,235,59,0.35);
+            letter-spacing: 1px;
+            line-height: 1.4;
+        }
+
+        .subtitulo {
+            font-size: 1.25rem;
+            color: #90a4ae;
+            margin: 10px 0 22px;
+            letter-spacing: 0.5px;
+        }
+        .subtitulo strong { color: #81c784; }
+
+        .seccion {
+            margin-bottom: 20px;
+            text-align: left;
+            background: rgba(0,0,0,0.22);
+            border: 2px solid #2a3344;
+            border-radius: 12px;
+            padding: 14px 14px 12px;
+        }
+        .seccion h2 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.7rem;
+            color: #a5d6a7;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px dashed #333a4a;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 1.25rem;
+            font-family: 'VT323', monospace;
+            border: 2px solid #455a64;
+            border-radius: 8px;
+            background: #0d121c;
+            color: #fff;
+            outline: none;
+            margin-bottom: 10px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input[type="text"]:focus {
+            border-color: #ffeb3b;
+            box-shadow: 0 0 0 3px rgba(255,235,59,0.15);
+        }
+        input[type="text"]::placeholder { color: #607d8b; }
+
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-size: 1.2rem;
+            font-family: 'VT323', monospace;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            transition: transform 0.12s, filter 0.12s, box-shadow 0.12s;
+        }
+        button:hover { transform: translateY(-1px); filter: brightness(1.08); }
+        button:active { transform: translateY(1px) scale(0.98); }
+
+        .btn-crear {
+            width: 100%;
+            background: linear-gradient(180deg, #66bb6a, #43a047);
+            color: #fff;
+            border: 2px solid #2e7d32;
+            box-shadow: 0 4px 0 #1b5e20;
+        }
+        .btn-crear:hover { box-shadow: 0 5px 0 #1b5e20; }
+        .btn-crear:active { box-shadow: 0 2px 0 #1b5e20; }
+
+        .btn-carpeta {
+            width: 100%;
+            background: linear-gradient(180deg, #ffb74d, #fb8c00);
+            color: #1a1200;
+            border: 2px solid #ef6c00;
+            box-shadow: 0 4px 0 #e65100;
+            margin-bottom: 10px;
+        }
+
+        .btn-jugar {
+            background: linear-gradient(180deg, #64b5f6, #1e88e5);
+            color: #fff;
+            border: 2px solid #1565c0;
+            padding: 8px 14px;
+            font-size: 1.1rem;
+        }
+        .btn-borrar {
+            background: linear-gradient(180deg, #e57373, #e53935);
+            color: #fff;
+            border: 2px solid #c62828;
+            padding: 8px 12px;
+            font-size: 1.05rem;
+            margin-left: 6px;
+        }
+        .btn-cargar-archivo {
+            width: 100%;
+            background: #37474f;
+            color: #eceff1;
+            border: 2px solid #546e7a;
+            margin-top: 6px;
+        }
+
+        .estado-carpeta {
+            font-size: 1.1rem;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .estado-ok {
+            background: rgba(46, 125, 50, 0.35);
+            color: #a5d6a7;
+            border: 1px solid #4caf50;
+        }
+        .estado-no {
+            background: rgba(183, 28, 28, 0.25);
+            color: #ef9a9a;
+            border: 1px solid #e57373;
+        }
+
+        .lista-mundos {
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+        .lista-mundos::-webkit-scrollbar { width: 8px; }
+        .lista-mundos::-webkit-scrollbar-thumb {
+            background: #455a64; border-radius: 4px;
+        }
+        .mundo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 2px solid #2a3344;
+            border-radius: 10px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .mundo-item:hover {
+            border-color: #5c6bc0;
+            background: rgba(92, 107, 192, 0.12);
+        }
+        .mundo-nombre {
+            font-size: 1.3rem;
+            color: #fff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+        .mundo-nombre::before {
+            content: '◆ ';
+            color: #ffeb3b;
+            font-size: 0.85rem;
+        }
+        .mundo-vacio {
+            text-align: center;
+            color: #78909c;
+            padding: 18px 8px;
+            font-size: 1.15rem;
+        }
+
+        .pie {
+            margin-top: 6px;
+            font-size: 1rem;
+            color: #607d8b;
+        }
+        .pie span { color: #ffeb3b; }
+
+        input[type="file"] { display: none; }
+
+        @media (max-width: 480px) {
+            .menu { padding: 22px 16px; }
+            h1 { font-size: 1.05rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg" aria-hidden="true"></div>
+    <div class="menu">
+        <div class="logo-row">
+            <div class="logo-cube" title="Mate-Craft"></div>
+            <h1>MATE-CRAFT</h1>
+        </div>
+        <p class="subtitulo">Minecraft + <strong>matemáticas</strong> · aprende jugando</p>
+
+        <div class="seccion">
+            <h2>1 · Carpeta de mundos</h2>
+            <div id="estado-carpeta" class="estado-carpeta estado-no">Ninguna carpeta seleccionada</div>
+            <button type="button" class="btn-carpeta" onclick="seleccionarCarpeta()">Seleccionar carpeta «mundos»</button>
+            <input type="file" id="file-input" accept=".json,application/json">
+            <button type="button" class="btn-cargar-archivo" onclick="document.getElementById('file-input').click()">Cargar archivo .json</button>
+        </div>
+
+        <div class="seccion">
+            <h2>2 · Nuevo mundo</h2>
+            <input type="text" id="nombre-nuevo" placeholder="Nombre del mundo..." maxlength="24" autocomplete="off">
+            <button type="button" class="btn-crear" onclick="crearMundo()">Crear y jugar</button>
+        </div>
+
+        <div class="seccion">
+            <h2>3 · Mundos guardados</h2>
+            <div class="lista-mundos" id="lista-mundos">
+                <div class="mundo-vacio">No hay mundos todavía</div>
+            </div>
+        </div>
+
+        <p class="pie">En el juego: <span>Esc</span> pausa · <span>M</span> guardar · <span>Alt+C</span> creativo</p>
+    </div>
+
+<script>
+        const DB_NAME = 'MateCraftFS';
+        const STORE = 'handles';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, 1);
+                req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function guardarHandle(handle) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE, 'readwrite');
+                tx.objectStore(STORE).put(handle, 'mundosDir');
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function obtenerHandle() {
+            try {
+                const db = await openDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(STORE, 'readonly');
+                    const req = tx.objectStore(STORE).get('mundosDir');
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function verificarPermiso(handle) {
+            if (!handle) return false;
+            const opts = { mode: 'readwrite' };
+            if ((await handle.queryPermission(opts)) === 'granted') return true;
+            if ((await handle.requestPermission(opts)) === 'granted') return true;
+            return false;
+        }
+
+        let dirHandle = null;
+        let soportaFS = ('showDirectoryPicker' in window);
+
+        async function init() {
+            if (!soportaFS) {
+                document.getElementById('estado-carpeta').innerHTML =
+                    '<span class="estado-no">Tu navegador no soporta acceso a carpetas (usa Chrome o Edge). Los mundos se guardan en el navegador y puedes cargar .json.</span>';
+                document.querySelector('.btn-carpeta').style.display = 'none';
+                await listarMundosDeCarpeta();
+                return;
+            }
+
+            dirHandle = await obtenerHandle();
+            if (dirHandle && await verificarPermiso(dirHandle)) {
+                actualizarEstadoCarpeta(true);
+            } else {
+                dirHandle = null;
+                actualizarEstadoCarpeta(false);
+            }
+            await listarMundosDeCarpeta();
+        }
+
+        function actualizarEstadoCarpeta(ok) {
+            const el = document.getElementById('estado-carpeta');
+            if (ok && dirHandle) {
+                el.className = 'estado-carpeta estado-ok';
+                el.textContent = '✓ Carpeta lista: ' + (dirHandle.name || 'mundos');
+            } else {
+                el.className = 'estado-carpeta estado-no';
+                el.textContent = 'Ninguna carpeta seleccionada';
+            }
+        }
+
+        async function seleccionarCarpeta() {
+            if (!soportaFS) {
+                alert('Tu navegador no soporta seleccionar carpetas. Usa Chrome o Edge, o carga un archivo .json manualmente.');
+                return;
+            }
+            try {
+                dirHandle = await window.showDirectoryPicker({
+                    id: 'matecraft-mundos',
+                    mode: 'readwrite',
+                    startIn: 'documents'
+                });
+                await guardarHandle(dirHandle);
+                actualizarEstadoCarpeta(true);
+                await listarMundosDeCarpeta();
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    console.error(e);
+                    alert('No se pudo seleccionar la carpeta.');
+                }
+            }
+        }
+
+        function listarLocalStorage() {
+            try {
+                return JSON.parse(localStorage.getItem('matecraft_mundos') || '[]');
+            } catch (e) { return []; }
+        }
+
+        async function listarMundosDeCarpeta() {
+            const cont = document.getElementById('lista-mundos');
+            const setNombres = new Set();
+
+            // Mundos en localStorage (siempre disponibles)
+            listarLocalStorage().forEach(n => setNombres.add(n));
+
+            // Mundos en la carpeta
+            if (dirHandle) {
+                try {
+                    for await (const entry of dirHandle.values()) {
+                        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.json')) {
+                            setNombres.add(entry.name.replace(/\.json$/i, ''));
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            const mundos = Array.from(setNombres).sort((a, b) => a.localeCompare(b, 'es'));
+
+            if (mundos.length === 0) {
+                cont.innerHTML = '<div class="mundo-vacio">No hay mundos guardados. ¡Crea uno nuevo!</div>';
+                return;
+            }
+
+            cont.innerHTML = '';
+            mundos.forEach(nombre => {
+                const item = document.createElement('div');
+                item.className = 'mundo-item';
+
+                const span = document.createElement('span');
+                span.className = 'mundo-nombre';
+                span.textContent = nombre;
+
+                const acciones = document.createElement('div');
+
+                const btnJugar = document.createElement('button');
+                btnJugar.className = 'btn-jugar';
+                btnJugar.textContent = 'Jugar';
+                btnJugar.onclick = () => cargarYJugar(nombre);
+
+                const btnBorrar = document.createElement('button');
+                btnBorrar.className = 'btn-borrar';
+                btnBorrar.textContent = 'Borrar';
+                btnBorrar.onclick = () => borrarMundo(nombre);
+
+                acciones.appendChild(btnJugar);
+                acciones.appendChild(btnBorrar);
+                item.appendChild(span);
+                item.appendChild(acciones);
+                cont.appendChild(item);
+            });
+        }
+
+        async function cargarYJugar(nombre) {
+            let dataArchivo = null;
+            let dataLocal = null;
+
+            // 1) Carpeta del PC
+            if (dirHandle) {
+                try {
+                    const fileHandle = await dirHandle.getFileHandle(nombre + '.json');
+                    const file = await fileHandle.getFile();
+                    dataArchivo = JSON.parse(await file.text());
+                } catch (e) {
+                    console.warn('No en carpeta:', e);
+                }
+            }
+
+            // 2) localStorage (auto-guardado reciente)
+            try {
+                const raw = localStorage.getItem('matecraft_mundo_' + nombre);
+                if (raw) dataLocal = JSON.parse(raw);
+            } catch (e) {}
+
+            // Preferir el más reciente por fecha
+            let data = null;
+            if (dataArchivo && dataLocal) {
+                const fA = dataArchivo.fecha ? Date.parse(dataArchivo.fecha) : 0;
+                const fL = dataLocal.fecha ? Date.parse(dataLocal.fecha) : 0;
+                data = (fL >= fA) ? dataLocal : dataArchivo;
+            } else {
+                data = dataLocal || dataArchivo;
+            }
+
+            if (!data || !data.voxel) {
+                alert('No se pudo cargar el mundo "' + nombre + '".');
+                return;
+            }
+
+            sessionStorage.setItem('matecraft_cargar', JSON.stringify({
+                nombre: nombre,
+                data: data
+            }));
+            window.location.href = 'juego.html?mundo=' + encodeURIComponent(nombre);
+        }
+
+        async function borrarMundo(nombre) {
+            if (!confirm('¿Borrar el mundo "' + nombre + '"?')) return;
+            // Borrar localStorage
+            try {
+                localStorage.removeItem('matecraft_mundo_' + nombre);
+                let lista = listarLocalStorage().filter(n => n !== nombre);
+                localStorage.setItem('matecraft_mundos', JSON.stringify(lista));
+            } catch (e) {}
+            // Borrar archivo en carpeta si existe
+            if (dirHandle) {
+                try { await dirHandle.removeEntry(nombre + '.json'); } catch (e) {}
+            }
+            await listarMundosDeCarpeta();
+        }
+
+        function crearMundo() {
+            let nombre = document.getElementById('nombre-nuevo').value.trim();
+            if (!nombre) {
+                alert('Escribe un nombre para el mundo');
+                return;
+            }
+            nombre = nombre.replace(/[^\w\sáéíóúñÁÉÍÓÚÑ\-]/gi, '').substring(0, 24).trim();
+            if (!nombre) {
+                alert('Nombre no válido');
+                return;
+            }
+
+            if (soportaFS && !dirHandle) {
+                alert('Primero selecciona la carpeta "mundos" del ordenador (botón naranja). Ahí se guardará tu progreso.');
+                return;
+            }
+
+            try {
+                sessionStorage.removeItem('matecraft_cargar');
+                sessionStorage.setItem('matecraft_nuevo', nombre);
+            } catch (e) {}
+            window.location.href = 'juego.html?nuevo=' + encodeURIComponent(nombre);
+        }
+
+        document.getElementById('file-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const texto = await file.text();
+                const data = JSON.parse(texto);
+                let nombre = (data.nombre || file.name.replace(/\.json$/i, '')).substring(0, 24);
+
+                sessionStorage.setItem('matecraft_cargar', JSON.stringify({
+                    nombre: nombre,
+                    data: data
+                }));
+                window.location.href = 'juego.html?mundo=' + encodeURIComponent(nombre);
+            } catch (err) {
+                alert('Archivo no válido o corrupto.');
+            }
+            e.target.value = '';
+        });
+
+        document.getElementById('nombre-nuevo').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') crearMundo();
+        });
+
+        init();
+    </script>
+</body>
+</html>

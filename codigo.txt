@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mate-Craft - Generación de Roca y Sistema de Ítems</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #87CEEB; font-family: monospace; user-select: none; }
+        #bloqueo-pantalla {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white; z-index: 100;
+            cursor: pointer;
+        }
+        #bloqueo-pantalla h1 { font-size: 3rem; margin-bottom: 10px; text-shadow: 2px 2px #000; }
+        #bloqueo-pantalla p { font-size: 1.2rem; background: rgba(0,0,0,0.7); padding: 12px 24px; border-radius: 8px; text-align: center; line-height: 1.6; }
+        #mira {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: white; font-size: 24px; pointer-events: none; z-index: 50;
+            text-shadow: 0 0 2px black;
+        }
+        #barra-romper-container {
+            position: absolute; top: 56%; left: 50%; transform: translateX(-50%);
+            width: 120px; height: 10px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.7);
+            border-radius: 3px; display: none; z-index: 50; overflow: hidden;
+        }
+        #barra-romper { width: 0%; height: 100%; background: #4CAF50; transition: width 0.05s linear; }
+        #inventario {
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            display: flex; background: rgba(0,0,0,0.7); padding: 6px; border-radius: 8px;
+            z-index: 50; gap: 6px; pointer-events: auto; min-height: 50px; align-items: center;
+        }
+        .slot {
+            width: 50px; height: 50px; background: rgba(50,50,50,0.8);
+            border: 3px solid #444; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            color: white; font-weight: bold; font-size: 12px; text-shadow: 1px 1px #000;
+            border-radius: 4px; position: relative; overflow: hidden;
+            background-size: cover; background-position: center; image-rendering: pixelated;
+            cursor: pointer;
+        }
+        .slot.activo { border-color: #fff; background-color: rgba(90,90,90,0.9); transform: scale(1.08); }
+        .slot span { position: relative; z-index: 1; background: rgba(0,0,0,0.6); width: 100%; text-align: center; font-size: 11px; color: #ffeb3b; }
+
+        #pantalla-inventario {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); display: none; justify-content: center; align-items: center;
+            z-index: 150; color: white;
+        }
+        .inventario-panel {
+            background: rgba(30,30,30,0.95); border: 4px solid #555; border-radius: 10px;
+            padding: 20px; width: 460px; display: flex; flex-direction: column; gap: 20px; align-items: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.9);
+        }
+        .inventario-panel h2 { margin: 0; font-size: 1.4rem; text-align: center; color: #ffeb3b; }
+        .seccion-crafteo {
+            display: flex; align-items: center; gap: 15px; background: rgba(0,0,0,0.4);
+            padding: 15px; border-radius: 8px; width: 100%; justify-content: center; box-sizing: border-box;
+        }
+        .cuadros-crafteo-2x2 {
+            display: grid; grid-template-columns: repeat(2, 50px); grid-template-rows: repeat(2, 50px); gap: 5px;
+        }
+        .cuadros-crafteo-3x3 {
+            display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 5px;
+        }
+        .flecha-crafteo { font-size: 24px; font-weight: bold; color: #aaa; }
+        .slot-crafteo-resultado {
+            width: 50px; height: 50px; background: rgba(50,50,50,0.8); border: 3px solid #777;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            border-radius: 4px; position: relative; background-size: cover; background-position: center;
+            image-rendering: pixelated; cursor: pointer;
+        }
+        .slot-crafteo-resultado span { background: rgba(0,0,0,0.6); width: 100%; text-align: center; font-size: 11px; color: #ffeb3b; }
+        .inventario-items-grid {
+            display: grid; grid-template-columns: repeat(4, 50px); gap: 8px; min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div id="mira">+</div>
+    <div id="barra-romper-container"><div id="barra-romper"></div></div>
+    
+    <div id="bloqueo-pantalla">
+        <h1>MATE-CRAFT</h1>
+        <p>Haz clic para jugar<br><b>W, A, S, D</b> para moverte | <b>ESPACIO</b> para saltar / nadar<br><b>E:</b> Inventario | <b>Clic Der en Mesa:</b> Abrir Crafteo 3x3<br><b>Clic Izq:</b> Romper | <b>Clic Der:</b> Construir</p>
+    </div>
+
+    <div id="pantalla-inventario">
+        <div class="inventario-panel">
+            <h2 id="titulo-panel-inventario">INVENTARIO Y CRAFTEO</h2>
+            <div class="seccion-crafteo">
+                <div id="contenedor-grilla-crafteo"></div>
+                <div class="flecha-crafteo">➔</div>
+                <div class="slot-crafteo-resultado" id="craft-resultado" onclick="reclamarCrafteo()">
+                    <span id="craft-res-cant"></span>
+                </div>
+            </div>
+            <h3>Tus Materiales</h3>
+            <div class="inventario-items-grid" id="inventario-completo-grid"></div>
+            <p style="font-size: 0.8rem; color: #ccc; margin: 0; text-align: center;">Arrastra ítems a la grilla y haz clic en el resultado</p>
+        </div>
+    </div>
+
+    <div id="inventario"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script>
+        let scene, camera, renderer, controls;
+        const tamMundoXZ = 128;
+        const tamMundoY = 64;
+        
+        let mundoVoxel = new Uint8Array(tamMundoXZ * tamMundoY * tamMundoXZ);
+        let meshMundo = null;
+
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2(0, 0);
+
+        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, spacePressed = false;
+        let prevTime = performance.now();
+        let velocityY = 0;
+        const gravedad = 24.0;
+        const velocidadMovimiento = 4.3;
+        const fuerzaSalto = 8.5;
+        let enSuelo = false;
+
+        let radioJugador = 0.3;
+        let alturaJugador = 1.6;
+        let ojosJugador = 1.4;
+
+        let estaRompiendo = false;
+        let objetivoRompiendoPos = null;
+        let tiempoRompiendo = 0;
+        let tiempoRequeridoRomper = 0.6; 
+
+        let inventarioRecursos = { roca: 0, tierra: 0, tronco: 0, tablon: 0, palito: 0, mesacra: 0, picm: 0 };
+        let materialesDisponiblesEnBarra = [];
+        let materialSeleccionadoIndex = 0;
+        
+        let inventarioAbierto = false;
+        let modoMesa3x3 = false; 
+        let grillaCrafteo = new Array(4).fill(null); 
+
+        let texturasIconos = { roca: 'roc.png', tierra: 't.png', tronco: 'tr.png', tablon: 'tab.png', palito: 'palo.png', mesacra: 'crafta.png', picm: 'picm.png' };
+        
+        // Mapeo actualizado: el ID 1 da 'roca', y el ID 12 también da 'roca' al romperse
+        const ID_A_TIPO = { 1: 'roca', 2: 'tierra', 3: 'tierra', 4: null, 5: null, 6: 'tronco', 7: 'agua', 8: 'tablon', 9: 'palito', 10: 'mesacra', 12: 'roca' };
+
+        let acumuladorTiempoAgua = 0;
+        const intervaloPropagacionAgua = 0.8;
+
+        let materialesMundo = [];
+
+        function obtenerIdVoxel(x, y, z) {
+            let offsetRango = tamMundoXZ / 2;
+            let mx = Math.floor(x + offsetRango);
+            let my = Math.floor(y);
+            let mz = Math.floor(z + offsetRango);
+            if (mx < 0 || mx >= tamMundoXZ || my < 0 || my >= tamMundoY || mz < 0 || mz >= tamMundoXZ) return 0;
+            return mundoVoxel[mx + my * tamMundoXZ + mz * tamMundoXZ * tamMundoY];
+        }
+
+        function establecerIdVoxel(x, y, z, id) {
+            let offsetRango = tamMundoXZ / 2;
+            let mx = Math.floor(x + offsetRango);
+            let my = Math.floor(y);
+            let mz = Math.floor(z + offsetRango);
+            if (mx < 0 || mx >= tamMundoXZ || my < 0 || my >= tamMundoY || mz < 0 || mz >= tamMundoXZ) return;
+            mundoVoxel[mx + my * tamMundoXZ + mz * tamMundoXZ * tamMundoY] = id;
+        }
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 45, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const textureLoader = new THREE.TextureLoader();
+            function cargarTex(archivo) {
+                let tex = textureLoader.load('texturas/' + archivo);
+                tex.magFilter = THREE.NearestFilter;
+                tex.minFilter = THREE.NearestFilter;
+                return tex;
+            }
+
+            // Material 12 añadido al final para la Cobblestone independiente
+            materialesMundo = [
+                new THREE.MeshBasicMaterial({ map: cargarTex('p.png') }),   // 0: Piedra lisa
+                new THREE.MeshBasicMaterial({ map: cargarTex('t.png') }),   // 1: Tierra
+                new THREE.MeshBasicMaterial({ map: cargarTex('c.png') }),   // 2: Costado pasto
+                new THREE.MeshBasicMaterial({ map: cargarTex('ta.png') }),  // 3: Tapa pasto
+                new THREE.MeshBasicMaterial({ map: cargarTex('h.png') }),   // 4: Hojas
+                new THREE.MeshBasicMaterial({ map: cargarTex('b.png') }),   // 5: Bedrock
+                new THREE.MeshBasicMaterial({ map: cargarTex('tr.png') }),  // 6: Tronco lado
+                new THREE.MeshBasicMaterial({ map: cargarTex('tra.png') }), // 7: Tronco tapa
+                new THREE.MeshBasicMaterial({ map: cargarTex('ag.png'), transparent: true, opacity: 0.8, depthWrite: false }), // 8: Agua
+                new THREE.MeshBasicMaterial({ map: cargarTex('tab.png') }), // 9: Tablón
+                new THREE.MeshBasicMaterial({ map: cargarTex('crafta.png') }), // 10: Mesa arriba
+                new THREE.MeshBasicMaterial({ map: cargarTex('crafl.png') }),  // 11: Mesa lado
+                new THREE.MeshBasicMaterial({ map: cargarTex('roc.png') })   // 12: Bloque de Cobblestone colocado
+            ];
+
+            controls = new THREE.PointerLockControls(camera, document.body);
+
+            const pantallaBloqueo = document.getElementById('bloqueo-pantalla');
+            pantallaBloqueo.addEventListener('click', () => { 
+                if (!inventarioAbierto) controls.lock(); 
+            });
+            controls.addEventListener('lock', () => { pantallaBloqueo.style.display = 'none'; });
+            controls.addEventListener('unlock', () => { 
+                if (!inventarioAbierto) pantallaBloqueo.style.display = 'flex'; 
+                cancelarRuptura(); 
+            });
+
+            scene.add(controls.getObject());
+
+            let semillaX = Math.random() * 1000;
+            let semillaZ = Math.random() * 1000;
+            let desplazamiento = tamMundoXZ / 2;
+            let nivelDelMar = 4;
+
+            for (let x = 0; x < tamMundoXZ; x++) {
+                for (let z = 0; z < tamMundoXZ; z++) {
+                    let alturaColina = Math.floor(
+                        Math.sin((x + semillaX) * 0.08) * Math.cos((z + semillaZ) * 0.08) * 10 + 
+                        Math.sin((x + semillaX) * 0.03) * Math.cos((z + semillaZ) * 0.03) * 8 + 14
+                    );
+                    if (alturaColina < 4) alturaColina = 4;
+                    if (alturaColina >= tamMundoY - 6) alturaColina = tamMundoY - 7;
+
+                    let esLago = alturaColina <= nivelDelMar;
+                    let alturaTerrenoReal = esLago ? 3 : alturaColina;
+
+                    for (let y = 0; y <= alturaTerrenoReal; y++) {
+                        let idMat = 1; 
+                        if (y === 0) idMat = 5; 
+                        else if (y === alturaTerrenoReal) idMat = 3; 
+                        else if (y >= alturaTerrenoReal - 3) idMat = 2; 
+
+                        let posX = x - desplazamiento;
+                        let posZ = z - desplazamiento;
+                        establecerIdVoxel(posX, y, posZ, idMat);
+                    }
+
+                    if (esLago) {
+                        for (let yWaters = 3; yWaters <= nivelDelMar; yWaters++) {
+                            establecerIdVoxel(x - desplazamiento, yWaters, z - desplazamiento, 7);
+                        }
+                    }
+
+                    let probabilidadArbol = Math.sin((x + semillaX) * 12.9898 + (z + semillaZ) * 78.233) * 43758.5453;
+                    let valorAleatorio = probabilidadArbol - Math.floor(probabilidadArbol);
+
+                    if (valorAleatorio < 0.012 && alturaColina > 5 && !esLago) {
+                        let baseArbolY = alturaColina + 1;
+                        let posX = x - desplazamiento;
+                        let posZ = z - desplazamiento;
+
+                        for (let t = 0; t < 5; t++) {
+                            establecerIdVoxel(posX, baseArbolY + t, posZ, 6);
+                        }
+
+                        let alturaCopa = baseArbolY + 4;
+                        for (let hx = -2; hx <= 2; hx++) {
+                            for (let hz = -2; hz <= 2; hz++) {
+                                for (let hy = 0; hy <= 2; hy++) {
+                                    if (Math.abs(hx) === 2 && Math.abs(hz) === 2 && hy === 2) continue;
+                                    let hX = posX + hx;
+                                    let hY = alturaCopa + hy;
+                                    let hZ = posZ + hz;
+                                    if (obtenerIdVoxel(hX, hY, hZ) === 0) {
+                                        establecerIdVoxel(hX, hY, hZ, 4);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            reconstruirMallaMundo();
+
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'KeyW') moveForward = true;
+                if (e.code === 'KeyS') moveBackward = true;
+                if (e.code === 'KeyA') moveLeft = true;
+                if (e.code === 'KeyD') moveRight = true;
+                if (e.code === 'Space') {
+                    spacePressed = true;
+                    if (enSuelo) { velocityY = fuerzaSalto; enSuelo = false; }
+                }
+
+                if (e.code === 'KeyE') {
+                    toggleInventario(false); 
+                }
+                
+                let num = parseInt(e.key);
+                if (!inventarioAbierto && !isNaN(num) && num >= 1 && num <= materialesDisponiblesEnBarra.length) {
+                    materialSeleccionadoIndex = num - 1;
+                    actualizarUIInventario();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'KeyW') moveForward = false;
+                if (e.code === 'KeyS') moveBackward = false;
+                if (e.code === 'KeyA') moveLeft = false;
+                if (e.code === 'KeyD') moveRight = false;
+                if (e.code === 'Space') spacePressed = false;
+            });
+
+            window.addEventListener('wheel', (e) => {
+                if (inventarioAbierto || !controls.isLocked || materialesDisponiblesEnBarra.length === 0) return;
+                if (e.deltaY > 0) materialSeleccionadoIndex = (materialSeleccionadoIndex + 1) % materialesDisponiblesEnBarra.length;
+                else materialSeleccionadoIndex = (materialSeleccionadoIndex - 1 + materialesDisponiblesEnBarra.length) % materialesDisponiblesEnBarra.length;
+                actualizarUIInventario();
+            });
+
+            window.addEventListener('mousedown', (e) => {
+                if (inventarioAbierto || !controls.isLocked) return;
+                raycaster.setFromCamera(mouse, camera);
+                let intersects = raycaster.intersectObject(meshMundo);
+
+                if (intersects.length > 0 && intersects[0].distance < 6) {
+                    let hit = intersects[0];
+                    let normal = hit.face.normal.clone();
+                    let pImp = hit.point.clone().add(normal.clone().multiplyScalar(-0.01));
+                    let vx = Math.floor(pImp.x + 0.5), vy = Math.floor(pImp.y + 0.5), vz = Math.floor(pImp.z + 0.5);
+
+                    if (e.button === 0) {
+                        let idB = obtenerIdVoxel(vx, vy, vz);
+                        if (idB === 7 || idB === 5) { cancelarRuptura(); return; } 
+                        
+                        objetivoRompiendoPos = { x: vx, y: vy, z: vz };
+                        estaRompiendo = true;
+                        tiempoRompiendo = 0;
+
+                        let itemActual = materialesDisponiblesEnBarra[materialSeleccionadoIndex];
+                        if (idB === 1 && itemActual === 'picm') {
+                            tiempoRequeridoRomper = 0.25; 
+                        } else if (idB === 4) {
+                            tiempoRequeridoRomper = 0.2;
+                        } else if (idB === 1) {
+                            tiempoRequeridoRomper = 1.5; 
+                        } else {
+                            tiempoRequeridoRomper = 0.4;
+                        }
+
+                        document.getElementById('barra-romper-container').style.display = 'block';
+                    } else if (e.button === 2) {
+                        let idBajoClic = obtenerIdVoxel(vx, vy, vz);
+                        
+                        if (idBajoClic === 10) {
+                            toggleInventario(true);
+                            return;
+                        }
+
+                        if (materialesDisponiblesEnBarra.length === 0) return;
+                        
+                        let tipoMatStr = materialesDisponiblesEnBarra[materialSeleccionadoIndex];
+                        if (tipoMatStr === 'picm' || tipoMatStr === 'palito') return;
+                        
+                        let cx, cy, cz;
+                        if (idBajoClic === 7) {
+                            cx = vx; cy = vy; cz = vz;
+                        } else {
+                            let pConsOffset = hit.point.clone().add(normal.clone().multiplyScalar(0.01));
+                            cx = Math.floor(pConsOffset.x + 0.5); 
+                            cy = Math.floor(pConsOffset.y + 0.5); 
+                            cz = Math.floor(pConsOffset.z + 0.5);
+                        }
+
+                        if (inventarioRecursos[tipoMatStr] > 0) {
+                            let camPos = controls.getObject().position;
+                            if (!colisionaConCajaJugador(cx, cy, cz, camPos.x, camPos.y, camPos.z)) {
+                                let idAsignar = 1; 
+                                if (tipoMatStr === 'tierra') idAsignar = 2; 
+                                else if (tipoMatStr === 'tronco') idAsignar = 6;
+                                else if (tipoMatStr === 'tablon') idAsignar = 8;
+                                else if (tipoMatStr === 'mesacra') idAsignar = 10;
+                                else if (tipoMatStr === 'roca') idAsignar = 12; // <--- Ahora coloca el ID 12 (roc.png)
+
+                                establecerIdVoxel(cx, cy, cz, idAsignar);
+                                reconstruirMallaMundo();
+                                inventarioRecursos[tipoMatStr]--;
+                                actualizarUIInventario();
+                            }
+                        }
+                    }
+                }
+            });
+
+            window.addEventListener('mouseup', (e) => { if (e.button === 0) cancelarRuptura(); });
+            window.addEventListener('contextmenu', e => e.preventDefault());
+
+            while (colisionaConCajaJugadorPuro(camera.position.x, camera.position.y, camera.position.z)) {
+                camera.position.y += 1;
+            }
+
+            actualizarUIInventario();
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            animate();
+        }
+
+        function toggleInventario(esMesa3x3) {
+            inventarioAbierto = !inventarioAbierto;
+            let pantalla = document.getElementById('pantalla-inventario');
+            
+            if (inventarioAbierto) {
+                modoMesa3x3 = esMesa3x3;
+                let tamGrilla = modoMesa3x3 ? 9 : 4;
+                grillaCrafteo = new Array(tamGrilla).fill(null);
+                
+                document.getElementById('titulo-panel-inventario').innerText = modoMesa3x3 ? "MESA DE CRAFTEO (3x3)" : "INVENTARIO Y CRAFTEO (2x2)";
+                
+                pantalla.style.display = 'flex';
+                controls.unlock();
+                document.getElementById('bloqueo-pantalla').style.display = 'none';
+                actualizarUICrafteo();
+            } else {
+                grillaCrafteo.forEach(item => {
+                    if (item) inventarioRecursos[item]++;
+                });
+                grillaCrafteo = new Array(4).fill(null);
+                pantalla.style.display = 'none';
+                controls.lock();
+                actualizarUIInventario();
+            }
+        }
+
+        function cancelarRuptura() {
+            estaRompiendo = false; objetivoRompiendoPos = null; tiempoRompiendo = 0;
+            let c = document.getElementById('barra-romper-container'); if (c) c.style.display = 'none';
+        }
+
+        function actualizarUIInventario() {
+            materialesDisponiblesEnBarra = Object.keys(inventarioRecursos).filter(tipo => inventarioRecursos[tipo] > 0);
+            if (materialSeleccionadoIndex >= materialesDisponiblesEnBarra.length) {
+                materialSeleccionadoIndex = Math.max(0, materialesDisponiblesEnBarra.length - 1);
+            }
+            let contenedor = document.getElementById('inventario');
+            contenedor.innerHTML = '';
+            materialesDisponiblesEnBarra.forEach((tipo, index) => {
+                let slot = document.createElement('div');
+                slot.className = 'slot' + (index === materialSeleccionadoIndex ? ' activo' : '');
+                if (texturasIconos[tipo]) slot.style.backgroundImage = `url('texturas/${texturasIconos[tipo]}')`;
+                slot.onclick = () => { materialSeleccionadoIndex = index; actualizarUIInventario(); };
+                let span = document.createElement('span');
+                span.innerText = inventarioRecursos[tipo];
+                slot.appendChild(span);
+                contenedor.appendChild(slot);
+            });
+            if (inventarioAbierto) actualizarUICrafteo();
+        }
+
+        function permitirSoltar(ev) { ev.preventDefault(); }
+        function iniciarArrastre(ev, tipo) { ev.dataTransfer.setData("text/plain", tipo); }
+
+        function soltarEnCrafteo(ev, indexGrilla) {
+            ev.preventDefault();
+            let tipo = ev.dataTransfer.getData("text/plain");
+            if (tipo && inventarioRecursos[tipo] > 0) {
+                inventarioRecursos[tipo]--;
+                grillaCrafteo[indexGrilla] = tipo;
+                actualizarUIInventario();
+            }
+        }
+
+        function evaluarRecetaCrafteo() {
+            let g = grillaCrafteo;
+            
+            if (!modoMesa3x3) {
+                let tablonCount = g.filter(item => item === 'tablon').length;
+                let totalOcupados = g.filter(item => item !== null).length;
+                
+                if (tablonCount === 4 && totalOcupados === 4) {
+                    return { resultado: 'mesacra', cantidad: 1 };
+                }
+                let troncosEnGrilla = g.filter(item => item === 'tronco').length;
+                let otrosItems = g.filter(item => item !== null && item !== 'tronco').length;
+                if (otrosItems === 0 && troncosEnGrilla > 0) {
+                    return { resultado: 'tablon', cantidad: troncosEnGrilla * 4 };
+                }
+                if (tablonCount === 2 && totalOcupados === 2) {
+                    if ((g[0] === 'tablon' && g[2] === 'tablon' && g[1] === null && g[3] === null) ||
+                        (g[1] === 'tablon' && g[3] === 'tablon' && g[0] === null && g[2] === null)) {
+                        return { resultado: 'palito', cantidad: 4 };
+                    }
+                }
+            } else {
+                let tablonCount = g.filter(item => item === 'tablon').length;
+                let troncoCount = g.filter(item => item === 'tronco').length;
+                let palitoCount = g.filter(item => item === 'palito').length;
+                let totalOcupados = g.filter(item => item !== null).length;
+
+                if (tablonCount === 4 && totalOcupados === 4 && 
+                    ((g[0]==='tablon'&&g[1]==='tablon'&&g[3]==='tablon'&&g[4]==='tablon') ||
+                     (g[1]==='tablon'&&g[2]==='tablon'&&g[4]==='tablon'&&g[5]==='tablon') ||
+                     (g[3]==='tablon'&&g[4]==='tablon'&&g[6]==='tablon'&&g[7]==='tablon') ||
+                     (g[4]==='tablon'&&g[5]==='tablon'&&g[7]==='tablon'&&g[8]==='tablon'))) {
+                    return { resultado: 'mesacra', cantidad: 1 };
+                }
+
+                if (troncoCount > 0 && totalOcupados === troncoCount) {
+                    return { resultado: 'tablon', cantidad: troncoCount * 4 };
+                }
+
+                if (tablonCount === 2 && totalOcupados === 2) {
+                    if ((g[0]==='tablon'&&g[3]==='tablon') || (g[1]==='tablon'&&g[4]==='tablon') || (g[2]==='tablon'&&g[5]==='tablon') ||
+                        (g[3]==='tablon'&&g[6]==='tablon') || (g[4]==='tablon'&&g[7]==='tablon') || (g[5]==='tablon'&&g[8]==='tablon')) {
+                        return { resultado: 'palito', cantidad: 4 };
+                    }
+                }
+
+                if (tablonCount === 3 && palitoCount === 2 && totalOcupados === 5) {
+                    if (g[0]==='tablon' && g[1]==='tablon' && g[2]==='tablon' && g[4]==='palito' && g[7]==='palito') {
+                        return { resultado: 'picm', cantidad: 1 };
+                    }
+                }
+            }
+
+            return { resultado: null, cantidad: 0 };
+        }
+
+        function actualizarUICrafteo() {
+            let contenedorGrilla = document.getElementById('contenedor-grilla-crafteo');
+            contenedorGrilla.className = modoMesa3x3 ? "cuadros-crafteo-3x3" : "cuadros-crafteo-2x2";
+            contenedorGrilla.innerHTML = '';
+
+            for (let i = 0; i < grillaCrafteo.length; i++) {
+                let slotDiv = document.createElement('div');
+                slotDiv.className = 'slot';
+                slotDiv.id = 'craft-' + i;
+                slotDiv.ondragover = permitirSoltar;
+                slotDiv.ondrop = (ev) => soltarEnCrafteo(ev, i);
+                
+                let tipoItem = grillaCrafteo[i];
+                if (tipoItem) {
+                    slotDiv.style.backgroundImage = `url('texturas/${texturasIconos[tipoItem]}')`;
+                    slotDiv.innerHTML = `<span>1</span>`;
+                } else {
+                    slotDiv.style.backgroundImage = 'none';
+                    slotDiv.innerHTML = `<span>0</span>`;
+                }
+
+                slotDiv.onclick = () => {
+                    if (tipoItem) {
+                        inventarioRecursos[tipoItem]++;
+                        grillaCrafteo[i] = null;
+                        actualizarUIInventario();
+                    }
+                };
+
+                contenedorGrilla.appendChild(slotDiv);
+            }
+
+            let receta = evaluarRecetaCrafteo();
+            document.getElementById('craft-res-cant').innerText = receta.cantidad > 0 ? receta.cantidad : '';
+            if (receta.resultado) {
+                document.getElementById('craft-resultado').style.backgroundImage = `url('texturas/${texturasIconos[receta.resultado]}')`;
+            } else {
+                document.getElementById('craft-resultado').style.backgroundImage = 'none';
+            }
+
+            let gridUsuario = document.getElementById('inventario-completo-grid');
+            gridUsuario.innerHTML = '';
+            let itemsPoseidos = Object.keys(inventarioRecursos).filter(tipo => inventarioRecursos[tipo] > 0);
+            
+            itemsPoseidos.forEach(tipo => {
+                let slot = document.createElement('div');
+                slot.className = 'slot';
+                slot.draggable = true;
+                slot.ondragstart = (ev) => iniciarArrastre(ev, tipo);
+                
+                if (texturasIconos[tipo]) slot.style.backgroundImage = `url('texturas/${texturasIconos[tipo]}')`;
+                
+                let span = document.createElement('span');
+                span.innerText = inventarioRecursos[tipo];
+                slot.appendChild(span);
+                gridUsuario.appendChild(slot);
+            });
+        }
+
+        function reclamarCrafteo() {
+            let receta = evaluarRecetaCrafteo();
+            if (receta.resultado) {
+                inventarioRecursos[receta.resultado] += receta.cantidad;
+                for (let i = 0; i < grillaCrafteo.length; i++) {
+                    if (grillaCrafteo[i] !== null) {
+                        grillaCrafteo[i] = null; 
+                    }
+                }
+                actualizarUIInventario();
+            }
+        }
+
+        function simularPropagacionAgua() {
+            let cambiosRealizados = false;
+            let listaNuevasAguas = [];
+
+            let desplazamiento = tamMundoXZ / 2;
+            for (let x = 0; x < tamMundoXZ; x++) {
+                for (let y = 1; y < tamMundoY - 1; y++) {
+                    for (let z = 0; z < tamMundoXZ; z++) {
+                        let mx = x - desplazamiento, mz = z - desplazamiento;
+                        let id = obtenerIdVoxel(mx, y, mz);
+
+                        if (id === 7) { 
+                            let abajoId = obtenerIdVoxel(mx, y - 1, mz);
+                            if (abajoId === 0) {
+                                listaNuevasAguas.push({ x: mx, y: y - 1, z: mz });
+                            } else {
+                                let vecinos = [
+                                    { x: mx + 1, y: y, z: mz },
+                                    { x: mx - 1, y: y, z: mz },
+                                    { x: mx, y: y, z: mz + 1 },
+                                    { x: mx, y: y, z: mz - 1 }
+                                ];
+
+                                vecinos.forEach(v => {
+                                    if (v.x >= -desplazamiento && v.x < desplazamiento && v.z >= -desplazamiento && v.z < desplazamiento) {
+                                        let idVecino = obtenerIdVoxel(v.x, v.y, v.z);
+                                        if (idVecino === 0) {
+                                            listaNuevasAguas.push({ x: v.x, y: v.y, z: v.z });
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (listaNuevasAguas.length > 0) {
+                let maxExpansiones = Math.min(listaNuevasAguas.length, 150);
+                for (let i = 0; i < maxExpansiones; i++) {
+                    let pos = listaNuevasAguas[i];
+                    if (obtenerIdVoxel(pos.x, pos.y, pos.z) === 0) {
+                        establecerIdVoxel(pos.x, pos.y, pos.z, 7);
+                        cambiosRealizados = true;
+                    }
+                }
+                if (cambiosRealizados) {
+                    reconstruirMallaMundo();
+                }
+            }
+        }
+
+        function reconstruirMallaMundo() {
+            if (meshMundo) {
+                scene.remove(meshMundo);
+                meshMundo.geometry.dispose();
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            let posPorMaterial = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [] };
+            let uvPorMaterial = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [] };
+            let indicesPorMaterial = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [], 10: [], 11: [], 12: [] };
+            let indicesOffset = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 };
+
+            let desplazamiento = tamMundoXZ / 2;
+
+            for (let x = 0; x < tamMundoXZ; x++) {
+                for (let y = 0; y < tamMundoY; y++) {
+                    for (let z = 0; z < tamMundoXZ; z++) {
+                        let mx = x - desplazamiento, my = y, mz = z - desplazamiento;
+                        let id = obtenerIdVoxel(mx, my, mz);
+                        if (id === 0) continue;
+
+                        let vecinos = {
+                            px: obtenerIdVoxel(mx + 1, my, mz),
+                            nx: obtenerIdVoxel(mx - 1, my, mz),
+                            py: obtenerIdVoxel(mx, my + 1, mz),
+                            ny: obtenerIdVoxel(mx, my - 1, mz),
+                            pz: obtenerIdVoxel(mx, my, mz + 1),
+                            nz: obtenerIdVoxel(mx, my, mz - 1)
+                        };
+
+                        if (id === 7) { 
+                            if (vecinos.px !== 7) agregarCaraBloque(id, 'px', mx, my, mz);
+                            if (vecinos.nx !== 7) agregarCaraBloque(id, 'nx', mx, my, mz);
+                            if (vecinos.py !== 7) agregarCaraBloque(id, 'py', mx, my, mz);
+                            if (vecinos.ny !== 7) agregarCaraBloque(id, 'ny', mx, my, mz);
+                            if (vecinos.pz !== 7) agregarCaraBloque(id, 'pz', mx, my, mz);
+                            if (vecinos.nz !== 7) agregarCaraBloque(id, 'nz', mx, my, mz);
+                        } else {
+                            if (vecinos.px === 0 || (vecinos.px === 4 && id !== 4) || vecinos.px === 7) agregarCaraBloque(id, 'px', mx, my, mz);
+                            if (vecinos.nx === 0 || (vecinos.nx === 4 && id !== 4) || vecinos.nx === 7) agregarCaraBloque(id, 'nx', mx, my, mz);
+                            if (vecinos.py === 0 || (vecinos.py === 4 && id !== 4) || vecinos.py === 7) agregarCaraBloque(id, 'py', mx, my, mz);
+                            if (vecinos.ny === 0 || (vecinos.ny === 4 && id !== 4) || vecinos.ny === 7) agregarCaraBloque(id, 'ny', mx, my, mz);
+                            if (vecinos.pz === 0 || (vecinos.pz === 4 && id !== 4) || vecinos.pz === 7) agregarCaraBloque(id, 'pz', mx, my, mz);
+                            if (vecinos.nz === 0 || (vecinos.nz === 4 && id !== 4) || vecinos.nz === 7) agregarCaraBloque(id, 'nz', mx, my, mz);
+                        }
+                    }
+                }
+            }
+
+            function agregarCaraBloque(id, cara, x, y, z) {
+                let matSubId = 0;
+                if (id === 1) matSubId = 0; 
+                else if (id === 2) matSubId = 1; 
+                else if (id === 3) {
+                    if (cara === 'py') matSubId = 3;
+                    else if (cara === 'ny') matSubId = 1;
+                    else matSubId = 2;
+                }
+                else if (id === 4) matSubId = 4; 
+                else if (id === 5) matSubId = 5; 
+                else if (id === 6) {
+                    if (cara === 'py' || cara === 'ny') matSubId = 7;
+                    else matSubId = 6;
+                }
+                else if (id === 7) matSubId = 8; 
+                else if (id === 8) matSubId = 9; 
+                else if (id === 10) { 
+                    if (cara === 'py') matSubId = 10;      
+                    else if (cara === 'ny') matSubId = 9;    
+                    else matSubId = 11;                      
+                }
+                else if (id === 12) matSubId = 12; // <--- Mapea la ID 12 a la textura de cobblestone
+
+                let p = [
+                    [x-0.5, y-0.5, z+0.5], [x+0.5, y-0.5, z+0.5], [x+0.5, y+0.5, z+0.5], [x-0.5, y+0.5, z+0.5],
+                    [x+0.5, y-0.5, z-0.5], [x-0.5, y-0.5, z-0.5], [x-0.5, y+0.5, z-0.5], [x+0.5, y+0.5, z-0.5],
+                    [x-0.5, y+0.5, z-0.5], [x-0.5, y+0.5, z+0.5], [x+0.5, y+0.5, z+0.5], [x+0.5, y+0.5, z-0.5],
+                    [x-0.5, y-0.5, z+0.5], [x-0.5, y-0.5, z-0.5], [x+0.5, y-0.5, z-0.5], [x+0.5, y-0.5, z+0.5],
+                    [x+0.5, y-0.5, z+0.5], [x+0.5, y-0.5, z-0.5], [x+0.5, y+0.5, z-0.5], [x+0.5, y+0.5, z+0.5],
+                    [x-0.5, y-0.5, z-0.5], [x-0.5, y-0.5, z+0.5], [x-0.5, y+0.5, z+0.5], [x-0.5, y+0.5, z-0.5]
+                ];
+
+                let verticesCara;
+                if (cara === 'nz') verticesCara = [p[4], p[5], p[6], p[7]];
+                if (cara === 'pz') verticesCara = [p[0], p[1], p[2], p[3]];
+                if (cara === 'py') verticesCara = [p[8], p[9], p[10], p[11]];
+                if (cara === 'ny') verticesCara = [p[12], p[13], p[14], p[15]];
+                if (cara === 'px') verticesCara = [p[16], p[17], p[18], p[19]];
+                if (cara === 'nx') verticesCara = [p[20], p[21], p[22], p[23]];
+
+                let pArr = posPorMaterial[matSubId];
+                for(let i = 0; i < verticesCara.length; i++) {
+                    pArr.push(verticesCara[i][0], verticesCara[i][1], verticesCara[i][2]);
+                }
+
+                let uvArr = uvPorMaterial[matSubId];
+                uvArr.push(0,0, 1,0, 1,1, 0,1);
+
+                let idx = indicesOffset[matSubId];
+                let indArr = indicesPorMaterial[matSubId];
+                indArr.push(idx, idx+1, idx+2, idx, idx+2, idx+3);
+                indicesOffset[matSubId] += 4;
+            }
+
+            let posicionesTotales = [];
+            let uvsTotales = [];
+            let indicesTotales = [];
+            let offsetGlobal = 0;
+            let gruposMateriales = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+            gruposMateriales.forEach((mId, indexMaterial) => {
+                let pos = posPorMaterial[mId];
+                if (pos.length > 0) {
+                    let inicioIndice = indicesTotales.length;
+                    
+                    for(let i = 0; i < pos.length; i++) posicionesTotales.push(pos[i]);
+                    let uvs = uvPorMaterial[mId];
+                    for(let i = 0; i < uvs.length; i++) uvsTotales.push(uvs[i]);
+                    
+                    let inds = indicesPorMaterial[mId];
+                    for(let i = 0; i < inds.length; i++) {
+                        indicesTotales.push(inds[i] + offsetGlobal);
+                    }
+                    
+                    offsetGlobal += pos.length / 3;
+                    geometry.addGroup(inicioIndice, inds.length, indexMaterial);
+                }
+            });
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(posicionesTotales, 3));
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvsTotales, 2));
+            geometry.setIndex(indicesTotales);
+            geometry.computeVertexNormals();
+
+            meshMundo = new THREE.Mesh(geometry, materialesMundo);
+            scene.add(meshMundo);
+        }
+
+        function estaEnAgua(px, py, pz) {
+            let idBajoOjos = obtenerIdVoxel(px, py - 0.5, pz);
+            let idPies = obtenerIdVoxel(px, py - 1.2, pz);
+            return idBajoOjos === 7 || idPies === 7;
+        }
+
+        function colisionaConCajaJugadorPuro(px, py, pz) {
+            let minX = px - radioJugador, maxX = px + radioJugador;
+            let minY = py - ojosJugador, maxY = py + (alturaJugador - ojosJugador);
+            let minZ = pz - radioJugador, maxZ = pz + radioJugador;
+            for (let x = Math.floor(minX + 0.5); x <= Math.floor(maxX + 0.5); x++) {
+                for (let y = Math.floor(minY + 0.5); y <= Math.floor(maxY + 0.5); y++) {
+                    for (let z = Math.floor(minZ + 0.5); z <= Math.floor(maxZ + 0.5); z++) {
+                        let id = obtenerIdVoxel(x, y, z);
+                        if (id !== 0 && id !== 7) {
+                            if (maxX > x - 0.5 && minX < x + 0.5 && maxZ > z - 0.5 && minZ < z + 0.5 && maxY > y - 0.5 && minY < y + 0.5) return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function colisionaConCajaJugador(bx, by, bz, px, py, pz) {
+            let minX = px - radioJugador, maxX = px + radioJugador;
+            let minY = py - ojosJugador, maxY = py + (alturaJugador - ojosJugador);
+            let minZ = pz - radioJugador, maxZ = pz + radioJugador;
+            return (maxX > bx - 0.5 && minX < bx + 0.5 && maxZ > bz - 0.5 && minZ < bz + 0.5 && maxY > by - 0.5 && minY < by + 0.5);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const time = performance.now();
+            const delta = Math.min((time - prevTime) / 1000, 0.1);
+
+            acumuladorTiempoAgua += delta;
+            if (acumuladorTiempoAgua >= intervaloPropagacionAgua) {
+                acumuladorTiempoAgua = 0;
+                simularPropagacionAgua();
+            }
+
+            if (controls.isLocked === true) {
+                if (estaRompiendo && objetivoRompiendoPos) {
+                    let sigueApuntando = false;
+                    raycaster.setFromCamera(mouse, camera);
+                    let intersects = raycaster.intersectObject(meshMundo);
+                    if (intersects.length > 0 && intersects[0].distance < 6) {
+                        let hit = intersects[0];
+                        let normal = hit.face.normal.clone();
+                        let pImp = hit.point.clone().add(normal.clone().multiplyScalar(-0.01));
+                        let vx = Math.floor(pImp.x + 0.5), vy = Math.floor(pImp.y + 0.5), vz = Math.floor(pImp.z + 0.5);
+                        if (vx === objetivoRompiendoPos.x && vy === objetivoRompiendoPos.y && vz === objetivoRompiendoPos.z) sigueApuntando = true;
+                    }
+
+                    if (sigueApuntando) {
+                        tiempoRompiendo += delta;
+                        document.getElementById('barra-romper').style.width = Math.min((tiempoRompiendo / tiempoRequeridoRomper) * 100, 100) + '%';
+                        if (tiempoRompiendo >= tiempoRequeridoRomper) {
+                            let idRoto = obtenerIdVoxel(objetivoRompiendoPos.x, objetivoRompiendoPos.y, objetivoRompiendoPos.z);
+                            let tipoRotoStr = ID_A_TIPO[idRoto]; 
+                            
+                            establecerIdVoxel(objetivoRompiendoPos.x, objetivoRompiendoPos.y, objetivoRompiendoPos.z, 0);
+                            reconstruirMallaMundo();
+
+                            if (tipoRotoStr && inventarioRecursos[tipoRotoStr] !== undefined) {
+                                inventarioRecursos[tipoRotoStr]++;
+                                actualizarUIInventario();
+                            }
+                            cancelarRuptura();
+                        }
+                    } else { cancelarRuptura(); }
+                }
+
+                let camObj = controls.getObject();
+                let enElAgua = estaEnAgua(camObj.position.x, camObj.position.y, camObj.position.z);
+
+                let velocidadActual = (enElAgua ? velocidadMovimiento * 0.7 : velocidadMovimiento) * delta;
+                let dirX = 0, dirZ = 0;
+                let vAdelante = new THREE.Vector3(); camera.getWorldDirection(vAdelante); vAdelante.y = 0; vAdelante.normalize();
+                let vDerecha = new THREE.Vector3(); vDerecha.crossVectors(vAdelante, new THREE.Vector3(0, 1, 0));
+
+                if (moveForward) { dirX += vAdelante.x; dirZ += vAdelante.z; }
+                if (moveBackward) { dirX -= vAdelante.x; dirZ -= vAdelante.z; }
+                if (moveLeft) { dirX -= vDerecha.x; dirZ -= vDerecha.z; }
+                if (moveRight) { dirX += vDerecha.x; dirZ += vDerecha.z; }
+
+                if (dirX !== 0 || dirZ !== 0) {
+                    let len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+                    dirX = (dirX / len) * velocidadActual; dirZ = (dirZ / len) * velocidadActual;
+                    camObj.position.x += dirX;
+                    if (colisionaConCajaJugadorPuro(camObj.position.x, camObj.position.y, camObj.position.z)) camObj.position.x -= dirX;
+                    camObj.position.z += dirZ;
+                    if (colisionaConCajaJugadorPuro(camObj.position.x, camObj.position.y, camObj.position.z)) camObj.position.z -= dirZ;
+                }
+
+                if (enElAgua) {
+                    if (spacePressed) {
+                        velocityY = 5.5; 
+                    } else {
+                        velocityY = Math.max(velocityY - (gravedad * 0.15) * delta, -1.5); 
+                    }
+                } else {
+                    velocityY -= gravedad * delta;
+                }
+
+                camObj.position.y += velocityY * delta;
+                if (colisionaConCajaJugadorPuro(camObj.position.x, camObj.position.y, camObj.position.z)) {
+                    camObj.position.y -= velocityY * delta;
+                    if (velocityY < 0 && !enElAgua) enSuelo = true;
+                    velocityY = 0;
+                } else { 
+                    if (!enElAgua) enSuelo = false; 
+                }
+            }
+            prevTime = time;
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
